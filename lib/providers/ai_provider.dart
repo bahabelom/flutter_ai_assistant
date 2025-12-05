@@ -20,6 +20,7 @@ class AiProvider with ChangeNotifier {
   bool _shouldFocusTextField = false;
   bool _isSpeaking = false;
   bool _autoPlayAudio = false;
+  bool _ttsAvailable = false; // Track TTS availability
 
   // Getters
   String get inputText => _inputText;
@@ -32,6 +33,7 @@ class AiProvider with ChangeNotifier {
   bool get shouldFocusTextField => _shouldFocusTextField;
   bool get isSpeaking => _isSpeaking;
   bool get autoPlayAudio => _autoPlayAudio;
+  bool get ttsAvailable => _ttsAvailable; // Expose TTS availability
   
   /// Clear the focus flag after it's been used
   void clearFocusFlag() {
@@ -63,9 +65,18 @@ class AiProvider with ChangeNotifier {
       notifyListeners();
     }
 
+    // Initialize TTS with comprehensive error handling
+    _ttsAvailable = await _initializeTts();
+    notifyListeners();
+  }
+
+  /// Initialize TTS with error handling
+  Future<bool> _initializeTts() async {
     try {
-      // Configure TTS with error handling
+      // Try to set language first (this will fail if plugin isn't registered)
       await _tts.setLanguage(_getTtsLanguageCode(_selectedLanguage));
+      
+      // Configure TTS settings
       await _tts.setSpeechRate(0.5);
       await _tts.setVolume(1.0);
       await _tts.setPitch(1.0);
@@ -86,9 +97,14 @@ class AiProvider with ChangeNotifier {
         _isSpeaking = false;
         notifyListeners();
       });
+      
+      print('✓ TTS initialized successfully');
+      return true;
     } catch (e) {
-      print('TTS initialization error: $e');
-      // Continue without TTS if it fails
+      print('✗ TTS initialization failed: $e');
+      print('Note: TTS requires a full app rebuild (not hot restart). Run: flutter run');
+      _isSpeaking = false;
+      return false;
     }
   }
 
@@ -116,7 +132,20 @@ class AiProvider with ChangeNotifier {
   /// Update selected language
   void updateSelectedLanguage(String languageCode) {
     _selectedLanguage = languageCode;
-    _tts.setLanguage(_getTtsLanguageCode(languageCode));
+    
+    // Only update TTS language if TTS is available
+    if (_ttsAvailable) {
+      try {
+        _tts.setLanguage(_getTtsLanguageCode(languageCode));
+      } catch (e) {
+        print('Error setting TTS language: $e');
+        // Try to reinitialize TTS
+        _initializeTts().then((available) {
+          _ttsAvailable = available;
+          notifyListeners();
+        });
+      }
+    }
     notifyListeners();
   }
 
@@ -209,6 +238,19 @@ class AiProvider with ChangeNotifier {
       return;
     }
 
+    // Check if TTS is available
+    if (!_ttsAvailable) {
+      print('TTS is not available. Please do a full rebuild: flutter run');
+      // Try to reinitialize TTS once
+      _ttsAvailable = await _initializeTts();
+      if (!_ttsAvailable) {
+        _responseText = '${_responseText}\n\n[Note: Audio playback requires a full app rebuild. Please restart the app completely.]';
+        notifyListeners();
+        return;
+      }
+      notifyListeners();
+    }
+
     try {
       // Stop any ongoing speech first
       if (_isSpeaking) {
@@ -218,23 +260,42 @@ class AiProvider with ChangeNotifier {
       await _tts.setLanguage(_getTtsLanguageCode(_selectedLanguage));
       await _tts.speak(_responseText);
     } catch (e) {
+      print('TTS speak error: $e');
       _isSpeaking = false;
-      _responseText = 'TTS Error: ${e.toString()}';
+      // Don't overwrite response text, just log the error
+      // Try to reinitialize TTS for next time
+      _ttsAvailable = await _initializeTts();
       notifyListeners();
     }
   }
 
   /// Stop speaking
   Future<void> stopSpeaking() async {
-    await _tts.stop();
-    _isSpeaking = false;
-    notifyListeners();
+    if (!_ttsAvailable) {
+      return;
+    }
+    
+    try {
+      await _tts.stop();
+      _isSpeaking = false;
+      notifyListeners();
+    } catch (e) {
+      print('TTS stop error: $e');
+      _isSpeaking = false;
+      notifyListeners();
+    }
   }
 
   @override
   void dispose() {
     _speechService.dispose();
-    _tts.stop();
+    if (_ttsAvailable) {
+      try {
+        _tts.stop();
+      } catch (e) {
+        print('Error stopping TTS on dispose: $e');
+      }
+    }
     super.dispose();
   }
 }
