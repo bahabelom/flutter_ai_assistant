@@ -5,12 +5,14 @@ import 'package:google_fonts/google_fonts.dart';
 class ResponseBox extends StatelessWidget {
   final String response;
   final bool isLoading;
+  final bool isSpeaking;
   final VoidCallback onSpeak;
 
   const ResponseBox({
     super.key,
     required this.response,
     required this.isLoading,
+    this.isSpeaking = false,
     required this.onSpeak,
   });
 
@@ -43,13 +45,36 @@ class ResponseBox extends StatelessWidget {
                 ),
               ),
               if (response.isNotEmpty && !isLoading)
-                IconButton(
-                  onPressed: onSpeak,
-                  icon: Icon(
-                    Icons.volume_up,
-                    color: Colors.blue.shade600,
-                  ),
-                  tooltip: 'Speak answer',
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isSpeaking)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.blue.shade600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    IconButton(
+                      onPressed: onSpeak,
+                      icon: Icon(
+                        isSpeaking ? Icons.stop : Icons.volume_up,
+                        color: isSpeaking 
+                            ? Colors.red.shade600 
+                            : Colors.blue.shade600,
+                      ),
+                      tooltip: isSpeaking 
+                          ? 'Stop audio' 
+                          : 'Play audio response',
+                    ),
+                  ],
                 ),
             ],
           ),

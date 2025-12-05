@@ -241,10 +241,60 @@ class _HomeScreenState extends State<HomeScreen> {
                   ResponseBox(
                     response: aiProvider.responseText,
                     isLoading: aiProvider.isLoading,
+                    isSpeaking: aiProvider.isSpeaking,
                     onSpeak: () {
-                      aiProvider.speakResponse();
+                      if (aiProvider.isSpeaking) {
+                        aiProvider.stopSpeaking();
+                      } else {
+                        aiProvider.speakResponse();
+                      }
                     },
                   ),
+                  
+                  // Auto-play audio toggle
+                  if (aiProvider.responseText.isNotEmpty && !aiProvider.isLoading)
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.blue.shade200,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.volume_up,
+                                size: 20,
+                                color: Colors.blue.shade700,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Auto-play audio',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 14,
+                                  color: Colors.blue.shade900,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Switch(
+                            value: aiProvider.autoPlayAudio,
+                            onChanged: (value) {
+                              aiProvider.toggleAutoPlayAudio();
+                            },
+                            activeThumbColor: Colors.blue.shade600,
+                          ),
+                        ],
+                      ),
+                    ),
 
                   const SizedBox(height: 20),
 

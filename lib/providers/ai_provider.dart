@@ -18,6 +18,8 @@ class AiProvider with ChangeNotifier {
   String _listeningText = '';
   bool _speechAvailable = false;
   bool _shouldFocusTextField = false;
+  bool _isSpeaking = false;
+  bool _autoPlayAudio = false;
 
   // Getters
   String get inputText => _inputText;
@@ -28,6 +30,8 @@ class AiProvider with ChangeNotifier {
   String get listeningText => _listeningText;
   bool get speechAvailable => _speechAvailable;
   bool get shouldFocusTextField => _shouldFocusTextField;
+  bool get isSpeaking => _isSpeaking;
+  bool get autoPlayAudio => _autoPlayAudio;
   
   /// Clear the focus flag after it's been used
   void clearFocusFlag() {
@@ -49,15 +53,43 @@ class AiProvider with ChangeNotifier {
 
   /// Initialize speech recognition and TTS
   Future<void> _initializeServices() async {
-    // Initialize speech recognition
-    _speechAvailable = await _speechService.initialize();
-    notifyListeners();
+    try {
+      // Initialize speech recognition
+      _speechAvailable = await _speechService.initialize();
+      notifyListeners();
+    } catch (e) {
+      print('Speech recognition initialization error: $e');
+      _speechAvailable = false;
+      notifyListeners();
+    }
 
-    // Configure TTS
-    await _tts.setLanguage(_getTtsLanguageCode(_selectedLanguage));
-    await _tts.setSpeechRate(0.5);
-    await _tts.setVolume(1.0);
-    await _tts.setPitch(1.0);
+    try {
+      // Configure TTS with error handling
+      await _tts.setLanguage(_getTtsLanguageCode(_selectedLanguage));
+      await _tts.setSpeechRate(0.5);
+      await _tts.setVolume(1.0);
+      await _tts.setPitch(1.0);
+      
+      // Listen to TTS events
+      _tts.setStartHandler(() {
+        _isSpeaking = true;
+        notifyListeners();
+      });
+      
+      _tts.setCompletionHandler(() {
+        _isSpeaking = false;
+        notifyListeners();
+      });
+      
+      _tts.setErrorHandler((msg) {
+        print('TTS error: $msg');
+        _isSpeaking = false;
+        notifyListeners();
+      });
+    } catch (e) {
+      print('TTS initialization error: $e');
+      // Continue without TTS if it fails
+    }
   }
 
   /// Get TTS language code from language code
@@ -143,19 +175,32 @@ class AiProvider with ChangeNotifier {
         targetLanguage: _selectedLanguage,
       );
 
-      _responseText = result['translatedReply'] ?? 
-                     result['aiReply'] ?? 
-                     'No response received.';
+      // Extract aiReply from the response
+      _responseText = result['aiReply'] ?? 'No response received.';
       
       // Clear input after successful send
       _inputText = '';
       _listeningText = '';
+      
+      // Auto-play audio if enabled
+      if (_autoPlayAudio && _responseText.isNotEmpty) {
+        // Small delay to ensure UI is updated
+        Future.delayed(const Duration(milliseconds: 300), () {
+          speakResponse();
+        });
+      }
     } catch (e) {
       _responseText = 'Error: ${e.toString()}';
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+  
+  /// Toggle auto-play audio feature
+  void toggleAutoPlayAudio() {
+    _autoPlayAudio = !_autoPlayAudio;
+    notifyListeners();
   }
 
   /// Speak the response using text-to-speech
@@ -165,9 +210,15 @@ class AiProvider with ChangeNotifier {
     }
 
     try {
+      // Stop any ongoing speech first
+      if (_isSpeaking) {
+        await _tts.stop();
+      }
+      
       await _tts.setLanguage(_getTtsLanguageCode(_selectedLanguage));
       await _tts.speak(_responseText);
     } catch (e) {
+      _isSpeaking = false;
       _responseText = 'TTS Error: ${e.toString()}';
       notifyListeners();
     }
@@ -176,6 +227,8 @@ class AiProvider with ChangeNotifier {
   /// Stop speaking
   Future<void> stopSpeaking() async {
     await _tts.stop();
+    _isSpeaking = false;
+    notifyListeners();
   }
 
   @override

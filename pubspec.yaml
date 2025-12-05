@@ -12,7 +12,6 @@ dependencies:
     sdk: flutter
 
   # UI & Styling
-  google_fonts: ^6.1.0
   cupertino_icons: ^1.0.8
 
   # State Management
@@ -29,6 +28,7 @@ dependencies:
 
   # Environment Variables
   flutter_dotenv: ^5.1.0
+  google_fonts: ^6.3.3
 
 dev_dependencies:
   flutter_test:
