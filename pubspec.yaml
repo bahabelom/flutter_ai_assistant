@@ -1,0 +1,43 @@
+name: ai_assistant_app
+description: "Multilingual AI Assistant for Ethiopia - Flutter App"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Styling
+  google_fonts: ^6.1.0
+  cupertino_icons: ^1.0.8
+
+  # State Management
+  provider: ^6.1.2
+
+  # Speech & Text
+  speech_to_text: ^7.0.0  # Keep as fallback for English
+  vosk_flutter_2: ^1.0.5  # Offline speech recognition for Amharic, Tigrinya, Oromo
+  flutter_tts: ^3.8.3
+  permission_handler: ^11.3.0  # For microphone permissions
+
+  # Networking
+  http: ^1.2.0
+
+  # Environment Variables
+  flutter_dotenv: ^5.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Assets
+  assets:
+    - .env
